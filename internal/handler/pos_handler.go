@@ -95,6 +95,20 @@ func (h *POSHandler) ShiftDetails(c *gin.Context) {
 	ok(c, "shift details", result)
 }
 
+func (h *POSHandler) CloseShift(c *gin.Context) {
+	payload := map[string]any{}
+	if err := c.ShouldBindJSON(&payload); err != nil {
+		fail(c, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
+		return
+	}
+	result, err := h.usecase.CloseShift(middleware.CurrentAuth(c), c.Param("id_or_code"), payload)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	ok(c, "shift closed", result)
+}
+
 func bindResourcePayload(c *gin.Context, resource string) (map[string]any, error) {
 	var req any
 	switch resource {

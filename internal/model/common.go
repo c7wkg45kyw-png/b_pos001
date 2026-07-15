@@ -23,10 +23,10 @@ type ListQuery struct {
 	POSClientID string `form:"posclient_id"`
 }
 type AuditFields struct {
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	CreatedBy string    `json:"created_by"`
-	UpdatedBy string    `json:"updated_by"`
+	CreatedAt time.Time `json:"-"`
+	UpdatedAt time.Time `json:"-"`
+	CreatedBy string    `json:"-"`
+	UpdatedBy string    `json:"-"`
 }
 type ErrorResponse struct {
 	Success bool   `json:"success"`

@@ -314,6 +314,26 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/ShiftSessionRequest' }
       responses: { '201': { description: Created } }
+
+  /shifts/{id_or_code}/close:
+    post:
+      tags: [Shifts]
+      summary: Close open shift by POS client id or shift id/code
+      parameters:
+        - in: path
+          name: id_or_code
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                closing_cash_actual: { type: number, example: 2500.00 }
+      responses:
+        '200': { description: Shift closed }
   /shifts/{id_or_code}:
     get:
       tags: [Shifts]

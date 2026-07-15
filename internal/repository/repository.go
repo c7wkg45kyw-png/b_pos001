@@ -212,6 +212,24 @@ func (r *Repository) CloseExpiredShift(shift *entity.ShiftSession, userID string
 	return r.db.Save(shift).Error
 }
 
+func (r *Repository) CloseShift(merchantID, branchID, posClientID, userID string, closingCashActual float64) (entity.ShiftSession, error) {
+	shift, err := r.CurrentShift(merchantID, branchID, posClientID)
+	if err != nil {
+		return entity.ShiftSession{}, err
+	}
+	now := time.Now()
+	shift.Status = "CLOSED"
+	shift.ClosedBy = userID
+	shift.ClosedAt = &now
+	shift.ClosingCashActual = closingCashActual
+	shift.ClosingCashDifference = shift.ClosingCashActual - shift.ClosingCashExpected
+	shift.UpdatedBy = userID
+	if err := r.db.Save(&shift).Error; err != nil {
+		return entity.ShiftSession{}, err
+	}
+	return shift, nil
+}
+
 func (r *Repository) Summary(merchantID, branchID string) (model.SummaryResponse, error) {
 	var summary model.SummaryResponse
 	if err := r.db.Model(&entity.SaleOrder{}).Where("merchant_id = ? AND branch_id = ?", merchantID, branchID).Select("COALESCE(SUM(grand_total), 0)").Scan(&summary.SumGrandTotal).Error; err != nil {

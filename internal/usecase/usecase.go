@@ -89,6 +89,12 @@ func (u *Usecase) GetShiftDetails(auth model.AuthContext, posClientID string) (m
 	}
 	return map[string]any{"status": shift.Status, "must_close": false, "shift": shift}, nil
 }
+
+func (u *Usecase) CloseShift(auth model.AuthContext, posClientID string, payload map[string]any) (entity.ShiftSession, error) {
+	closingCashActual := flt(payload, "closing_cash_actual")
+	return u.repo.CloseShift(auth.MerchantID, auth.BranchID, posClientID, auth.UserID, closingCashActual)
+}
+
 func mapPayload(resource string, p map[string]any) (any, error) {
 	switch resource {
 	case "posclients":
