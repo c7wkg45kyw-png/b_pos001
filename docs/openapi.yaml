@@ -1,0 +1,528 @@
+openapi: 3.0.3
+info:
+  title: BPOS001 POS Module API
+  version: 1.0.0
+  description: POS service with JWT tenant scoping, POS client selection, shift sessions, sale orders, payments, and Swagger UI.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    APIResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        data: { type: object }
+    POSClientRequest:
+      type: object
+      required: [posclient_id, client_name]
+      properties:
+        posclient_id: { type: string, example: POS-HQ-01 }
+        user_id: { type: string, example: usr_cashier_01 }
+        client_name: { type: string, example: Front Counter 01 }
+        running_prefix: { type: string, example: IV }
+        status: { type: string, example: ACTIVE }
+        is_active: { type: boolean, example: true }
+    POSProductRequest:
+      type: object
+      required: [sku_id, product_name]
+      properties:
+        sku_id: { type: string, example: sku_123 }
+        sku_code: { type: string, example: DRINK-001 }
+        barcode: { type: string, example: 8850000000012 }
+        product_name: { type: string, example: Iced Americano }
+        unit: { type: string, example: cup }
+        is_active: { type: boolean, example: true }
+    PriceRequest:
+      type: object
+      required: [price_id, sku_id, unit_price]
+      properties:
+        price_id: { type: string, example: PRICE-DRINK-001-BASIC }
+        sku_id: { type: string, example: sku_123 }
+        sku_code: { type: string, example: DRINK-001 }
+        price_tier: { type: string, example: BASIC }
+        currency: { type: string, example: THB }
+        unit_price: { type: number, example: 65.0 }
+        is_active: { type: boolean, example: true }
+    ShiftSessionRequest:
+      type: object
+      required: [posclient_id]
+      properties:
+        posclient_id: { type: string, example: POS-HQ-01 }
+        opening_cash: { type: number, example: 2000.0 }
+        status: { type: string, example: OPEN }
+    SaleOrderRequest:
+      type: object
+      required: [posclient_id]
+      properties:
+        posclient_id: { type: string, example: POS-HQ-01 }
+        shift_session_id: { type: string, example: 00000000-0000-0000-0000-000000000000 }
+        customer_id: { type: string, example: cust_general }
+        subtotal: { type: number, example: 130.0 }
+        discount: { type: number, example: 0.0 }
+        vat_rate: { type: number, example: 7.0 }
+        status: { type: string, example: SUCCESS }
+    SaleItemRequest:
+      type: object
+      required: [sale_order_id, sku_id, item_name, quantity, unit_price]
+      properties:
+        sale_order_id: { type: string, example: 00000000-0000-0000-0000-000000000000 }
+        sku_id: { type: string, example: sku_123 }
+        sku_code: { type: string, example: DRINK-001 }
+        item_name: { type: string, example: Iced Americano }
+        quantity: { type: number, example: 2.0 }
+        unit_price: { type: number, example: 65.0 }
+        discount: { type: number, example: 0.0 }
+    PaymentMethodRequest:
+      type: object
+      required: [method_code, method_name]
+      properties:
+        method_code: { type: string, example: CASH }
+        method_name: { type: string, example: Cash }
+        method_type: { type: string, example: CASH }
+        is_active: { type: boolean, example: true }
+    PaymentRequest:
+      type: object
+      required: [payment_number, sale_order_id, payment_method_id, amount]
+      properties:
+        payment_number: { type: string, example: PAY-202607-0001 }
+        sale_order_id: { type: string, example: 00000000-0000-0000-0000-000000000000 }
+        payment_method_id: { type: string, example: 00000000-0000-0000-0000-000000000000 }
+        amount: { type: number, example: 139.1 }
+        status: { type: string, example: SUCCESS }
+paths:
+  /pos/select/{id_or_code}:
+    get:
+      tags: [POS Runtime]
+      summary: Select POS client for current merchant/branch and token user
+      parameters: [{ in: path, name: id_or_code, required: true, schema: { type: string } }]
+      responses: { '200': { description: POS selected } }
+  /posclients/{id_or_code}/shift-details:
+    get:
+      tags: [POS Runtime]
+      summary: Get open shift status and auto-close it if it has exceeded 24 hours
+      parameters: [{ in: path, name: id_or_code, required: true, schema: { type: string } }]
+      responses: { '200': { description: Shift details } }
+  /posclients:
+    get:
+      tags: [POS Clients]
+      summary: List posclients
+      parameters:
+        - { in: query, name: page, schema: { type: integer, default: 1 } }
+        - { in: query, name: limit, schema: { type: integer, default: 20 } }
+        - { in: query, name: search, schema: { type: string } }
+        - { in: query, name: status, schema: { type: string } }
+        - { in: query, name: posclient_id, schema: { type: string } }
+      responses: { '200': { description: OK } }
+    post:
+      tags: [POS Clients]
+      summary: Create posclients
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/POSClientRequest' }
+      responses: { '201': { description: Created } }
+  /posclients/{id_or_code}:
+    get:
+      tags: [POS Clients]
+      summary: Get posclients by id or code
+      parameters: [{ in: path, name: id_or_code, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK } }
+  /posclients/{id}:
+    put:
+      tags: [POS Clients]
+      summary: Replace posclients
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/POSClientRequest' }
+      responses: { '200': { description: Updated } }
+    patch:
+      tags: [POS Clients]
+      summary: Patch posclients
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/POSClientRequest' }
+      responses: { '200': { description: Patched } }
+    delete:
+      tags: [POS Clients]
+      summary: Delete posclients
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      responses: { '200': { description: Deleted } }
+  /products:
+    get:
+      tags: [Products]
+      summary: List products
+      parameters:
+        - { in: query, name: page, schema: { type: integer, default: 1 } }
+        - { in: query, name: limit, schema: { type: integer, default: 20 } }
+        - { in: query, name: search, schema: { type: string } }
+        - { in: query, name: status, schema: { type: string } }
+        - { in: query, name: posclient_id, schema: { type: string } }
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Products]
+      summary: Create products
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/POSProductRequest' }
+      responses: { '201': { description: Created } }
+  /products/{id_or_code}:
+    get:
+      tags: [Products]
+      summary: Get products by id or code
+      parameters: [{ in: path, name: id_or_code, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK } }
+  /products/{id}:
+    put:
+      tags: [Products]
+      summary: Replace products
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/POSProductRequest' }
+      responses: { '200': { description: Updated } }
+    patch:
+      tags: [Products]
+      summary: Patch products
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/POSProductRequest' }
+      responses: { '200': { description: Patched } }
+    delete:
+      tags: [Products]
+      summary: Delete products
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      responses: { '200': { description: Deleted } }
+  /prices:
+    get:
+      tags: [Prices]
+      summary: List prices
+      parameters:
+        - { in: query, name: page, schema: { type: integer, default: 1 } }
+        - { in: query, name: limit, schema: { type: integer, default: 20 } }
+        - { in: query, name: search, schema: { type: string } }
+        - { in: query, name: status, schema: { type: string } }
+        - { in: query, name: posclient_id, schema: { type: string } }
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Prices]
+      summary: Create prices
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PriceRequest' }
+      responses: { '201': { description: Created } }
+  /prices/{id_or_code}:
+    get:
+      tags: [Prices]
+      summary: Get prices by id or code
+      parameters: [{ in: path, name: id_or_code, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK } }
+  /prices/{id}:
+    put:
+      tags: [Prices]
+      summary: Replace prices
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PriceRequest' }
+      responses: { '200': { description: Updated } }
+    patch:
+      tags: [Prices]
+      summary: Patch prices
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PriceRequest' }
+      responses: { '200': { description: Patched } }
+    delete:
+      tags: [Prices]
+      summary: Delete prices
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      responses: { '200': { description: Deleted } }
+  /shifts:
+    get:
+      tags: [Shifts]
+      summary: List shifts
+      parameters:
+        - { in: query, name: page, schema: { type: integer, default: 1 } }
+        - { in: query, name: limit, schema: { type: integer, default: 20 } }
+        - { in: query, name: search, schema: { type: string } }
+        - { in: query, name: status, schema: { type: string } }
+        - { in: query, name: posclient_id, schema: { type: string } }
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Shifts]
+      summary: Create shifts
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ShiftSessionRequest' }
+      responses: { '201': { description: Created } }
+  /shifts/{id_or_code}:
+    get:
+      tags: [Shifts]
+      summary: Get shifts by id or code
+      parameters: [{ in: path, name: id_or_code, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK } }
+  /shifts/{id}:
+    put:
+      tags: [Shifts]
+      summary: Replace shifts
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ShiftSessionRequest' }
+      responses: { '200': { description: Updated } }
+    patch:
+      tags: [Shifts]
+      summary: Patch shifts
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ShiftSessionRequest' }
+      responses: { '200': { description: Patched } }
+    delete:
+      tags: [Shifts]
+      summary: Delete shifts
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      responses: { '200': { description: Deleted } }
+  /sale-orders:
+    get:
+      tags: [Sale Orders]
+      summary: List sale-orders
+      parameters:
+        - { in: query, name: page, schema: { type: integer, default: 1 } }
+        - { in: query, name: limit, schema: { type: integer, default: 20 } }
+        - { in: query, name: search, schema: { type: string } }
+        - { in: query, name: status, schema: { type: string } }
+        - { in: query, name: posclient_id, schema: { type: string } }
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Sale Orders]
+      summary: Create sale-orders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaleOrderRequest' }
+      responses: { '201': { description: Created } }
+  /sale-orders/{id_or_code}:
+    get:
+      tags: [Sale Orders]
+      summary: Get sale-orders by id or code
+      parameters: [{ in: path, name: id_or_code, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK } }
+  /sale-orders/{id}:
+    put:
+      tags: [Sale Orders]
+      summary: Replace sale-orders
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaleOrderRequest' }
+      responses: { '200': { description: Updated } }
+    patch:
+      tags: [Sale Orders]
+      summary: Patch sale-orders
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaleOrderRequest' }
+      responses: { '200': { description: Patched } }
+    delete:
+      tags: [Sale Orders]
+      summary: Delete sale-orders
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      responses: { '200': { description: Deleted } }
+  /sale-items:
+    get:
+      tags: [Sale Items]
+      summary: List sale-items
+      parameters:
+        - { in: query, name: page, schema: { type: integer, default: 1 } }
+        - { in: query, name: limit, schema: { type: integer, default: 20 } }
+        - { in: query, name: search, schema: { type: string } }
+        - { in: query, name: status, schema: { type: string } }
+        - { in: query, name: posclient_id, schema: { type: string } }
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Sale Items]
+      summary: Create sale-items
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaleItemRequest' }
+      responses: { '201': { description: Created } }
+  /sale-items/{id_or_code}:
+    get:
+      tags: [Sale Items]
+      summary: Get sale-items by id or code
+      parameters: [{ in: path, name: id_or_code, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK } }
+  /sale-items/{id}:
+    put:
+      tags: [Sale Items]
+      summary: Replace sale-items
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaleItemRequest' }
+      responses: { '200': { description: Updated } }
+    patch:
+      tags: [Sale Items]
+      summary: Patch sale-items
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SaleItemRequest' }
+      responses: { '200': { description: Patched } }
+    delete:
+      tags: [Sale Items]
+      summary: Delete sale-items
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      responses: { '200': { description: Deleted } }
+  /payment-methods:
+    get:
+      tags: [Payment Methods]
+      summary: List payment-methods
+      parameters:
+        - { in: query, name: page, schema: { type: integer, default: 1 } }
+        - { in: query, name: limit, schema: { type: integer, default: 20 } }
+        - { in: query, name: search, schema: { type: string } }
+        - { in: query, name: status, schema: { type: string } }
+        - { in: query, name: posclient_id, schema: { type: string } }
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Payment Methods]
+      summary: Create payment-methods
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PaymentMethodRequest' }
+      responses: { '201': { description: Created } }
+  /payment-methods/{id_or_code}:
+    get:
+      tags: [Payment Methods]
+      summary: Get payment-methods by id or code
+      parameters: [{ in: path, name: id_or_code, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK } }
+  /payment-methods/{id}:
+    put:
+      tags: [Payment Methods]
+      summary: Replace payment-methods
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PaymentMethodRequest' }
+      responses: { '200': { description: Updated } }
+    patch:
+      tags: [Payment Methods]
+      summary: Patch payment-methods
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PaymentMethodRequest' }
+      responses: { '200': { description: Patched } }
+    delete:
+      tags: [Payment Methods]
+      summary: Delete payment-methods
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      responses: { '200': { description: Deleted } }
+  /payments:
+    get:
+      tags: [Payments]
+      summary: List payments
+      parameters:
+        - { in: query, name: page, schema: { type: integer, default: 1 } }
+        - { in: query, name: limit, schema: { type: integer, default: 20 } }
+        - { in: query, name: search, schema: { type: string } }
+        - { in: query, name: status, schema: { type: string } }
+        - { in: query, name: posclient_id, schema: { type: string } }
+      responses: { '200': { description: OK } }
+    post:
+      tags: [Payments]
+      summary: Create payments
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PaymentRequest' }
+      responses: { '201': { description: Created } }
+  /payments/{id_or_code}:
+    get:
+      tags: [Payments]
+      summary: Get payments by id or code
+      parameters: [{ in: path, name: id_or_code, required: true, schema: { type: string } }]
+      responses: { '200': { description: OK } }
+  /payments/{id}:
+    put:
+      tags: [Payments]
+      summary: Replace payments
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PaymentRequest' }
+      responses: { '200': { description: Updated } }
+    patch:
+      tags: [Payments]
+      summary: Patch payments
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PaymentRequest' }
+      responses: { '200': { description: Patched } }
+    delete:
+      tags: [Payments]
+      summary: Delete payments
+      parameters: [{ in: path, name: id, required: true, schema: { type: string } }]
+      responses: { '200': { description: Deleted } }
