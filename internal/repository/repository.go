@@ -230,6 +230,58 @@ func (r *Repository) CloseShift(merchantID, branchID, posClientID, userID string
 	return shift, nil
 }
 
+func (r *Repository) ResolvePOSProduct(merchantID, branchID, skuID, skuCode, barcode string) (entity.POSProduct, error) {
+	var item entity.POSProduct
+	db := r.db.Where("merchant_id = ? AND branch_id = ?", merchantID, branchID)
+	parts := []string{}
+	args := []any{}
+	if skuID != "" {
+		parts = append(parts, "sku_id = ?")
+		args = append(args, skuID)
+	}
+	if skuCode != "" {
+		parts = append(parts, "sku_code = ?")
+		args = append(args, skuCode)
+	}
+	if barcode != "" {
+		parts = append(parts, "barcode = ?")
+		args = append(args, barcode)
+	}
+	if len(parts) == 0 {
+		return item, errors.New("sku_id, sku_code, or barcode is required")
+	}
+	err := db.Where(strings.Join(parts, " OR "), args...).First(&item).Error
+	return item, err
+}
+
+func (r *Repository) UpsertPriceBySKU(merchantID, branchID, userID string, req entity.Price) (entity.Price, error) {
+	var existing entity.Price
+	db := r.db.Where("merchant_id = ? AND branch_id = ? AND price_tier = ?", merchantID, branchID, req.PriceTier)
+	err := db.Where("price_id = ? OR sku_id = ? OR sku_code = ?", req.PriceID, req.SKUID, req.SKUCode).First(&existing).Error
+	if err == nil {
+		existing.UnitPrice = req.UnitPrice
+		existing.Currency = req.Currency
+		existing.SKUID = req.SKUID
+		existing.SKUCode = req.SKUCode
+		existing.PriceID = req.PriceID
+		existing.IsActive = true
+		existing.UpdatedBy = userID
+		if err := r.db.Save(&existing).Error; err != nil {
+			return entity.Price{}, err
+		}
+		return existing, nil
+	}
+	if !errors.Is(err, gorm.ErrRecordNotFound) {
+		return entity.Price{}, err
+	}
+	req.Base = entity.Base{MerchantID: merchantID, BranchID: branchID, CreatedBy: userID, UpdatedBy: userID}
+	req.IsActive = true
+	if err := r.db.Create(&req).Error; err != nil {
+		return entity.Price{}, err
+	}
+	return req, nil
+}
+
 func (r *Repository) Summary(merchantID, branchID string) (model.SummaryResponse, error) {
 	var summary model.SummaryResponse
 	if err := r.db.Model(&entity.SaleOrder{}).Where("merchant_id = ? AND branch_id = ?", merchantID, branchID).Select("COALESCE(SUM(grand_total), 0)").Scan(&summary.SumGrandTotal).Error; err != nil {

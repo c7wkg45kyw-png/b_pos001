@@ -22,6 +22,7 @@ func Register(router *gin.Engine, cfg config.Config, h Handlers) {
 	api.GET("/posclients/:id_or_code/shift-details", middleware.RequireScope("pos:read"), h.POS.ShiftDetails)
 	api.POST("/shifts/:id_or_code/close", middleware.RequireScope("pos:update"), h.POS.CloseShift)
 	api.GET("/summary", middleware.RequireScope("pos:read"), h.POS.Summary)
+	api.POST("/prices/adjust", middleware.RequireScope("pos:update"), h.POS.AdjustPrice)
 	for _, res := range []string{"posclients", "products", "prices", "shifts", "sale-orders", "sale-items", "payment-methods", "payments"} {
 		registerCRUD(api, res, h.POS)
 	}

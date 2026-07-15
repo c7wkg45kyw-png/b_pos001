@@ -383,6 +383,41 @@ func calculateSO(v *entity.SaleOrder) {
 	v.GrandTotal = net + v.VAT
 }
 
+func (u *Usecase) AdjustPrice(auth model.AuthContext, payload map[string]any) (entity.Price, error) {
+	unitPrice := flt(payload, "unit_price")
+	if unitPrice <= 0 {
+		return entity.Price{}, errors.New("unit_price must be greater than zero")
+	}
+	skuID := strings.TrimSpace(str(payload, "sku_id"))
+	skuCode := strings.TrimSpace(str(payload, "sku_code"))
+	barcode := strings.TrimSpace(str(payload, "barcode"))
+	priceTier := strings.TrimSpace(str(payload, "price_tier"))
+	if priceTier == "" {
+		priceTier = "BASIC"
+	}
+	currency := strings.TrimSpace(str(payload, "currency"))
+	if currency == "" {
+		currency = "THB"
+	}
+	product, err := u.repo.ResolvePOSProduct(auth.MerchantID, auth.BranchID, skuID, skuCode, barcode)
+	if err == nil {
+		if skuID == "" {
+			skuID = product.SKUID
+		}
+		if skuCode == "" {
+			skuCode = product.SKUCode
+		}
+	}
+	if skuID == "" {
+		return entity.Price{}, errors.New("sku_id not found; create POS product mapping first")
+	}
+	if skuCode == "" {
+		skuCode = skuID
+	}
+	priceID := fmt.Sprintf("PRICE-%s-%s", skuCode, priceTier)
+	return u.repo.UpsertPriceBySKU(auth.MerchantID, auth.BranchID, auth.UserID, entity.Price{PriceID: priceID, SKUID: skuID, SKUCode: skuCode, PriceTier: priceTier, Currency: currency, UnitPrice: unitPrice, IsActive: true})
+}
+
 func (u *Usecase) Summary(auth model.AuthContext) (model.SummaryResponse, error) {
 	return u.repo.Summary(auth.MerchantID, auth.BranchID)
 }

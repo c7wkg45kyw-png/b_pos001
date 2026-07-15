@@ -109,6 +109,23 @@ func (h *POSHandler) CloseShift(c *gin.Context) {
 	ok(c, "shift closed", result)
 }
 
+func (h *POSHandler) AdjustPrice(c *gin.Context) {
+	var req model.PriceAdjustRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fail(c, http.StatusBadRequest, "VALIDATION_ERROR", err.Error())
+		return
+	}
+	raw, _ := json.Marshal(req)
+	payload := map[string]any{}
+	_ = json.Unmarshal(raw, &payload)
+	result, err := h.usecase.AdjustPrice(middleware.CurrentAuth(c), payload)
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	ok(c, "price adjusted", result)
+}
+
 func bindResourcePayload(c *gin.Context, resource string) (map[string]any, error) {
 	var req any
 	switch resource {

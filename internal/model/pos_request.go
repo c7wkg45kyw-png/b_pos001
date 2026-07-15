@@ -32,6 +32,15 @@ type PriceRequest struct {
 	IsActive      *bool      `json:"is_active,omitempty"`
 }
 
+type PriceAdjustRequest struct {
+	SKUID     string  `json:"sku_id"`
+	SKUCode   string  `json:"sku_code"`
+	Barcode   string  `json:"barcode"`
+	PriceTier string  `json:"price_tier"`
+	Currency  string  `json:"currency"`
+	UnitPrice float64 `json:"unit_price" binding:"required"`
+}
+
 type ShiftSessionRequest struct {
 	ShiftNumber           string  `json:"shift_number"`
 	POSClientID           string  `json:"posclient_id" binding:"required"`

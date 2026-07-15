@@ -51,6 +51,16 @@ components:
         currency: { type: string, example: THB }
         unit_price: { type: number, example: 65.0 }
         is_active: { type: boolean, example: true }
+    PriceAdjustRequest:
+      type: object
+      required: [unit_price]
+      properties:
+        sku_id: { type: string, example: 7f4659ae-6668-48ac-a61f-df28bc3b9efb }
+        sku_code: { type: string, example: DRINK-001 }
+        barcode: { type: string, example: 8850000000012 }
+        price_tier: { type: string, example: BASIC }
+        currency: { type: string, example: THB }
+        unit_price: { type: number, example: 75.0 }
     ShiftSessionRequest:
       type: object
       required: [posclient_id]
@@ -262,6 +272,16 @@ paths:
           application/json:
             schema: { $ref: '#/components/schemas/PriceRequest' }
       responses: { '201': { description: Created } }
+  /prices/adjust:
+    post:
+      tags: [Prices]
+      summary: Adjust or create BASIC price by sku_id, sku_code, or barcode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PriceAdjustRequest' }
+      responses: { '200': { description: Price adjusted } }
   /prices/{id_or_code}:
     get:
       tags: [Prices]
