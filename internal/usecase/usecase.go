@@ -376,3 +376,7 @@ func calculateSO(v *entity.SaleOrder) {
 	v.VAT = net * v.VATRate / 100
 	v.GrandTotal = net + v.VAT
 }
+
+func (u *Usecase) Summary(auth model.AuthContext) (model.SummaryResponse, error) {
+	return u.repo.Summary(auth.MerchantID, auth.BranchID)
+}

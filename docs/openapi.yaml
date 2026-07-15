@@ -97,7 +97,35 @@ components:
         payment_method_id: { type: string, example: 00000000-0000-0000-0000-000000000000 }
         amount: { type: number, example: 139.1 }
         status: { type: string, example: SUCCESS }
+    POSSummaryResponse:
+      type: object
+      properties:
+        sum_grand_total: { type: number, format: double, example: 14570.0000 }
+        sum_orders: { type: integer, format: int64, example: 118 }
+        sum_item_amount: { type: number, format: double, example: 245.0000 }
+        sum_payment: { type: number, format: double, example: 14570.0000 }
+        sum_payment_method: { type: integer, format: int64, example: 2 }
+        sum_payment_methods:
+          type: object
+          additionalProperties: { type: number, format: double }
+          example: { Cash: 11616.0000, PromptPay: 2954.0000 }
 paths:
+  /summary:
+    get:
+      tags: [Sumarry]
+      summary: Get POS dashboard summary for current merchant and branch
+      responses:
+        '200':
+          description: POS summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data:
+                    $ref: '#/components/schemas/POSSummaryResponse'
   /pos/select/{id_or_code}:
     get:
       tags: [POS Runtime]

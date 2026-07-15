@@ -130,3 +130,12 @@ func bindResourcePayload(c *gin.Context, resource string) (map[string]any, error
 	}
 	return payload, nil
 }
+
+func (h *POSHandler) Summary(c *gin.Context) {
+	result, err := h.usecase.Summary(middleware.CurrentAuth(c))
+	if err != nil {
+		handleError(c, err)
+		return
+	}
+	ok(c, "summary", result)
+}

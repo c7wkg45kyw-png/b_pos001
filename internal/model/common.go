@@ -40,3 +40,12 @@ type AuthContext struct {
 	ClientID   string   `json:"client_id"`
 	Scopes     []string `json:"scopes"`
 }
+
+type SummaryResponse struct {
+	SumGrandTotal     float64            `json:"sum_grand_total"`
+	SumOrders         int64              `json:"sum_orders"`
+	SumItemAmount     float64            `json:"sum_item_amount"`
+	SumPayment        float64            `json:"sum_payment"`
+	SumPaymentMethod  int64              `json:"sum_payment_method"`
+	SumPaymentMethods map[string]float64 `json:"sum_payment_methods"`
+}

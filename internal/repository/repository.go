@@ -211,3 +211,35 @@ func (r *Repository) CloseExpiredShift(shift *entity.ShiftSession, userID string
 	shift.ClosingCashDifference = shift.ClosingCashActual - shift.ClosingCashExpected
 	return r.db.Save(shift).Error
 }
+
+func (r *Repository) Summary(merchantID, branchID string) (model.SummaryResponse, error) {
+	var summary model.SummaryResponse
+	if err := r.db.Model(&entity.SaleOrder{}).Where("merchant_id = ? AND branch_id = ?", merchantID, branchID).Select("COALESCE(SUM(grand_total), 0)").Scan(&summary.SumGrandTotal).Error; err != nil {
+		return summary, err
+	}
+	if err := r.db.Model(&entity.SaleOrder{}).Where("merchant_id = ? AND branch_id = ?", merchantID, branchID).Count(&summary.SumOrders).Error; err != nil {
+		return summary, err
+	}
+	if err := r.db.Model(&entity.SaleItem{}).Where("merchant_id = ? AND branch_id = ?", merchantID, branchID).Select("COALESCE(SUM(quantity), 0)").Scan(&summary.SumItemAmount).Error; err != nil {
+		return summary, err
+	}
+	if err := r.db.Model(&entity.Payment{}).Where("merchant_id = ? AND branch_id = ?", merchantID, branchID).Select("COALESCE(SUM(amount), 0)").Scan(&summary.SumPayment).Error; err != nil {
+		return summary, err
+	}
+	if err := r.db.Model(&entity.PaymentMethod{}).Where("merchant_id = ? AND branch_id = ? AND is_active = ?", merchantID, branchID, true).Count(&summary.SumPaymentMethod).Error; err != nil {
+		return summary, err
+	}
+	type paymentMethodTotal struct {
+		MethodName string
+		Total      float64
+	}
+	var rows []paymentMethodTotal
+	if err := r.db.Table("payments").Select("payment_methods.method_name, COALESCE(SUM(payments.amount), 0) AS total").Joins("JOIN payment_methods ON payment_methods.id = payments.payment_method_id").Where("payments.merchant_id = ? AND payments.branch_id = ?", merchantID, branchID).Group("payment_methods.method_name").Scan(&rows).Error; err != nil {
+		return summary, err
+	}
+	summary.SumPaymentMethods = map[string]float64{}
+	for _, row := range rows {
+		summary.SumPaymentMethods[row.MethodName] = row.Total
+	}
+	return summary, nil
+}
